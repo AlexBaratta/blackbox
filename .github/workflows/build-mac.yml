@@ -28,8 +28,12 @@ jobs:
             --add-data "assets:assets" \
             run_blackbox.py
 
+      - name: Package .app into a zip (preserve bundle metadata)
+        run: |
+          ditto -c -k --sequesterRsrc --keepParent "dist/Blackbox.app" "Blackbox-mac.zip"
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: Blackbox-mac
-          path: dist/Blackbox.app
+          path: Blackbox-mac.zip
