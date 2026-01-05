@@ -13,3 +13,13 @@ class MatchSettings:
 
     # NMS: if two boxes overlap more than this, keep only the best
     nms_iou_threshold: float = 0.35
+
+@dataclass(frozen=True)
+class MatchSettings:
+    threshold: float = 0.85        # create
+    keep_threshold: float = 0.72   # keep/refresh
+    track_ttl_seconds: float = 1.0 # solid boxes
+    nms_iou_threshold: float = 0.35
+
+    track_iou_threshold: float = 0.30
+    track_ttl_seconds: float = 0.6
