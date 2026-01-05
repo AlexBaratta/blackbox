@@ -18,7 +18,7 @@ class MatchSettings:
 class MatchSettings:
     threshold: float = 0.85        # create
     keep_threshold: float = 0.72   # keep/refresh
-    track_ttl_seconds: float = 1.0 # solid boxes
+    track_ttl_seconds: float = 1.5 # solid boxes
     nms_iou_threshold: float = 0.35
 
     track_iou_threshold: float = 0.30

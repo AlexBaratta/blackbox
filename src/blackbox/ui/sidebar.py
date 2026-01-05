@@ -1,12 +1,21 @@
 from __future__ import annotations
 
+from typing import Dict, List, Set
+
 from PyQt6.QtCore import Qt
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QSlider, QCheckBox, QPushButton
+from PyQt6.QtWidgets import (
+    QWidget, QVBoxLayout, QLabel, QSlider, QCheckBox, QPushButton,
+    QLineEdit, QListWidget, QListWidgetItem
+)
+
+from blackbox.catalog import CatalogItem
 
 
 class Sidebar(QWidget):
-    def __init__(self):
+    def __init__(self, catalog: Dict[str, CatalogItem]):
         super().__init__()
+        self.catalog = catalog
+        self._visible_ids: List[str] = []
 
         self.setWindowFlags(
             Qt.WindowType.FramelessWindowHint
@@ -15,14 +24,12 @@ class Sidebar(QWidget):
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
 
-        # Basic sizing/position (right side)
-        self.setFixedWidth(320)
+        self.setFixedWidth(360)
         self._reposition_right()
 
-        # Content container
         layout = QVBoxLayout()
         layout.setContentsMargins(14, 14, 14, 14)
-        layout.setSpacing(12)
+        layout.setSpacing(10)
 
         title = QLabel("Blackbox Settings")
         title.setStyleSheet("font-size: 18px; font-weight: 600; color: white;")
@@ -33,27 +40,63 @@ class Sidebar(QWidget):
         self.enable_overlay.setStyleSheet("color: white;")
         layout.addWidget(self.enable_overlay)
 
+        layout.addWidget(QLabel("Match threshold"))
         self.threshold_slider = QSlider(Qt.Orientation.Horizontal)
         self.threshold_slider.setMinimum(60)
         self.threshold_slider.setMaximum(95)
         self.threshold_slider.setValue(86)
-        layout.addWidget(QLabel("Match threshold (0.60–0.95)"))
         layout.addWidget(self.threshold_slider)
 
-        close_btn = QPushButton("Close (Alt+Z)")
-        layout.addWidget(close_btn)
+        # ---- Search + selectable items ----
+        layout.addWidget(QLabel("Find items to detect"))
+        self.search = QLineEdit()
+        self.search.setPlaceholderText("Search items…")
+        self.search.textChanged.connect(self._apply_filter)
+        layout.addWidget(self.search)
+
+        self.list = QListWidget()
+        self.list.setAlternatingRowColors(True)
+        self.list.itemChanged.connect(self._on_item_changed)
+        layout.addWidget(self.list, stretch=1)
+
+        btn_row = QVBoxLayout()
+
+        # self.btn_select_all = QPushButton("Select all (filtered)")
+        # self.btn_select_all.clicked.connect(self._select_all_filtered)
+        # btn_row.addWidget(self.btn_select_all)
+
+        self.btn_clear = QPushButton("Clear selection")
+        self.btn_clear.clicked.connect(self._clear_selection)
+        btn_row.addWidget(self.btn_clear)
+
+        close_btn = QPushButton("Close (Alt+Hotkey)")
         close_btn.clicked.connect(self.hide)
+        btn_row.addWidget(close_btn)
+
+        layout.addLayout(btn_row)
 
         self.setLayout(layout)
 
-        # Semi-transparent background via stylesheet
         self.setStyleSheet("""
             QWidget {
-                background-color: rgba(20, 20, 20, 200);
+                background-color: rgba(20, 20, 20, 210);
                 border: 1px solid rgba(255,255,255,60);
                 border-radius: 12px;
             }
             QLabel { color: white; }
+            QLineEdit {
+                padding: 8px;
+                border-radius: 10px;
+                background-color: rgba(255,255,255,18);
+                color: white;
+                border: 1px solid rgba(255,255,255,40);
+            }
+            QListWidget {
+                background-color: rgba(255,255,255,10);
+                color: white;
+                border: 1px solid rgba(255,255,255,30);
+                border-radius: 10px;
+            }
             QPushButton {
                 padding: 8px;
                 border-radius: 10px;
@@ -63,14 +106,13 @@ class Sidebar(QWidget):
             QPushButton:hover { background-color: rgba(255,255,255,45); }
         """)
 
+        self._populate_list()
         self.hide()
 
     def _reposition_right(self):
-        screen = self.screen()
-        geo = screen.availableGeometry()
-        # Right side, vertically centered-ish
+        geo = self.screen().availableGeometry()
         x = geo.x() + geo.width() - self.width() - 20
-        y = geo.y() + 120
+        y = geo.y() + 100
         self.move(x, y)
 
     def toggle(self):
@@ -81,3 +123,68 @@ class Sidebar(QWidget):
             self.show()
             self.raise_()
             self.activateWindow()
+            self.search.setFocus()
+
+    # -------- list/search logic --------
+
+    def _populate_list(self):
+        self.list.blockSignals(True)
+        self.list.clear()
+
+        # default visible: all
+        self._visible_ids = list(self.catalog.keys())
+
+        for item_id, item in self.catalog.items():
+            witem = QListWidgetItem(item.name)
+            witem.setFlags(witem.flags() | Qt.ItemFlag.ItemIsUserCheckable)
+            witem.setCheckState(Qt.CheckState.Unchecked)
+            witem.setData(Qt.ItemDataRole.UserRole, item_id)
+            self.list.addItem(witem)
+
+        self.list.blockSignals(False)
+
+    def _apply_filter(self, text: str):
+        q = text.strip().lower()
+        self._visible_ids = []
+
+        for i in range(self.list.count()):
+            witem = self.list.item(i)
+            item_id = witem.data(Qt.ItemDataRole.UserRole)
+            item = self.catalog[item_id]
+            visible = (q in item.name.lower()) or (q in item_id.lower()) or (q == "")
+            witem.setHidden(not visible)
+            if visible:
+                self._visible_ids.append(item_id)
+
+    def _select_all_filtered(self):
+        self.list.blockSignals(True)
+        for i in range(self.list.count()):
+            witem = self.list.item(i)
+            if not witem.isHidden():
+                witem.setCheckState(Qt.CheckState.Checked)
+        self.list.blockSignals(False)
+
+    def _clear_selection(self):
+        self.list.blockSignals(True)
+        for i in range(self.list.count()):
+            self.list.item(i).setCheckState(Qt.CheckState.Unchecked)
+        self.list.blockSignals(False)
+
+    def _on_item_changed(self, _):
+        # placeholder: we pull selected items via getter below
+        pass
+
+    def selected_item_ids(self) -> Set[str]:
+        out: Set[str] = set()
+        for i in range(self.list.count()):
+            witem = self.list.item(i)
+            if witem.checkState() == Qt.CheckState.Checked:
+                out.add(witem.data(Qt.ItemDataRole.UserRole))
+        return out
+
+    def selected_template_labels(self) -> Set[str]:
+        labels: Set[str] = set()
+        for item_id in self.selected_item_ids():
+            for lab in self.catalog[item_id].template_labels:
+                labels.add(lab.upper())
+        return labels

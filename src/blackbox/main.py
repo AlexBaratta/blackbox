@@ -15,7 +15,8 @@ from blackbox.capture.screen import grab_region, Rect
 from blackbox.ui.overlay_boxes import BoxesOverlay, Box
 from blackbox.ui.sidebar import Sidebar
 from blackbox.hotkeys.win_hotkey import HotkeyManager
-from blackbox.vision.tracker import StableTracker  # your “solid boxes” tracker
+from blackbox.vision.tracker import StableTracker 
+from blackbox.catalog import default_catalog
 
 
 class NativeEventFilter(QAbstractNativeEventFilter):
@@ -34,7 +35,9 @@ def main() -> int:
 
     # UI
     overlay = BoxesOverlay()
-    sidebar = Sidebar()
+    catalog = default_catalog()
+    sidebar = Sidebar(catalog)
+
 
     # Hotkey
     hotkeys = HotkeyManager()
@@ -64,9 +67,18 @@ def main() -> int:
         bgr = grab_region(region)
         gray = preprocess_frame(bgr)
 
+        selected_labels = sidebar.selected_template_labels()
+
+        # If nothing selected, match nothing (or choose match all; your call)
+        if not selected_labels:
+            overlay.update_boxes([])
+            return
+
+        active_templates = {k: v for k, v in templates.items() if k in selected_labels}
+
         # Hysteresis: strong/weak
-        strong_raw = match_templates(gray, templates, threshold=settings_threshold)
-        weak_raw = match_templates(gray, templates, threshold=max(0.60, settings_threshold - 0.12))
+        strong_raw = match_templates(gray, active_templates, threshold=settings_threshold)
+        weak_raw = match_templates(gray, active_templates, threshold=max(0.60, settings_threshold - 0.12))
 
         strong = nms(strong_raw, iou_threshold=settings.nms_iou_threshold)
         weak = nms(weak_raw, iou_threshold=settings.nms_iou_threshold)
