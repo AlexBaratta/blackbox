@@ -4,7 +4,7 @@ import time
 
 from PyQt6.QtCore import QTimer
 from PyQt6.QtWidgets import QApplication
-from PyQt6.QtCore import QTimer, QAbstractNativeEventFilter
+from PyQt6.QtCore import QObject, pyqtSignal
 
 from blackbox.settings import MatchSettings
 from blackbox.utils.paths import templates_dir
@@ -14,19 +14,17 @@ from blackbox.vision.nms import nms
 from blackbox.capture.screen import grab_region, Rect
 from blackbox.ui.overlay_boxes import BoxesOverlay, Box
 from blackbox.ui.sidebar import Sidebar
-from blackbox.hotkeys.win_hotkey import HotkeyManager
+# from blackbox.hotkeys.win_hotkey import HotkeyManager
 from blackbox.vision.tracker import StableTracker 
 from blackbox.catalog import default_catalog
+from blackbox.hotkeys.hotkey_manager import HotkeyManager
 
+class UiBridge(QObject):
+    toggle_sidebar = pyqtSignal()
 
-class NativeEventFilter(QAbstractNativeEventFilter):
-    def __init__(self, hotkeys: HotkeyManager):
+    def __init__(self, sidebar):
         super().__init__()
-        self.hotkeys = hotkeys
-
-    def nativeEventFilter(self, event_type, message):
-        handled = self.hotkeys.handle_native_event(event_type, message)
-        return handled, 0
+        self.toggle_sidebar.connect(lambda: (print("HOTKEY FIRED"), sidebar.toggle()))
 
 
 
@@ -40,12 +38,22 @@ def main() -> int:
 
 
     # Hotkey
-    hotkeys = HotkeyManager()
-    hotkeys.register_alt_b(hotkey_id=1, callback=sidebar.toggle)
+    bridge = UiBridge(sidebar)
+    hotkey_mgr = HotkeyManager()
+
+    # Windows: Alt+B (may be swallowed by some games)
+    hotkey_mgr.register_hotkey(1, "<alt>+b", lambda: bridge.toggle_sidebar.emit())
+
+    # Windows fallback that is usually reliable even in games:
+    hotkey_mgr.register_hotkey(2, "<ctrl>+<alt>+b", lambda: bridge.toggle_sidebar.emit())
+
+    import platform
+    if platform.system() == "Darwin":
+        # macOS: Cmd+B
+        hotkey_mgr.register_hotkey(3, "<cmd>+b", lambda: bridge.toggle_sidebar.emit())
+
 
     # Native event hook
-    filt = NativeEventFilter(hotkeys)
-    app.installNativeEventFilter(filt)
 
     # Detection setup
     settings = MatchSettings()
@@ -56,7 +64,10 @@ def main() -> int:
         ttl_seconds=settings.track_ttl_seconds
     )
 
-    region = None  # full screen
+    region = Rect(left=200, top=150, width=1700, height=1100)
+    # overlay.set_roi(region)
+    # overlay.set_show_roi(True)
+
     target_fps = 10.0
     interval_ms = int(1000 / target_fps)
 
@@ -106,7 +117,7 @@ def main() -> int:
     try:
         return app.exec()
     finally:
-        hotkeys.unregister_all()
+        hotkey_mgr.unregister_all()
 
 
 if __name__ == "__main__":
