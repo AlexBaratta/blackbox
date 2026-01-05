@@ -4,6 +4,7 @@ import time
 
 from PyQt6.QtCore import QTimer
 from PyQt6.QtWidgets import QApplication
+from PyQt6.QtCore import QTimer, QAbstractNativeEventFilter
 
 from blackbox.settings import MatchSettings
 from blackbox.utils.paths import templates_dir
@@ -11,50 +12,71 @@ from blackbox.vision.templates import load_templates
 from blackbox.vision.match import preprocess_frame, match_templates
 from blackbox.vision.nms import nms
 from blackbox.capture.screen import grab_region, Rect
-from blackbox.ui.overlay import OverlayWindow, Box
-from blackbox.vision.tracker import StableTracker
+from blackbox.ui.overlay_boxes import BoxesOverlay, Box
+from blackbox.ui.sidebar import Sidebar
+from blackbox.hotkeys.win_hotkey import HotkeyManager
+from blackbox.vision.tracker import StableTracker  # your “solid boxes” tracker
+
+
+class NativeEventFilter(QAbstractNativeEventFilter):
+    def __init__(self, hotkeys: HotkeyManager):
+        super().__init__()
+        self.hotkeys = hotkeys
+
+    def nativeEventFilter(self, event_type, message):
+        handled = self.hotkeys.handle_native_event(event_type, message)
+        return handled, 0
+
 
 
 def main() -> int:
-    settings = MatchSettings()
-    templates = load_templates(templates_dir())
-
-    # If you want full-screen scan, keep region = None.
-    # If you want only Rust area, set Rect(...) and ALSO offset boxes (see note below).
-    region = None
-    # region = Rect(left=0, top=0, width=1920, height=1080)
-
     app = QApplication([])
 
-    overlay = OverlayWindow()
+    # UI
+    overlay = BoxesOverlay()
+    sidebar = Sidebar()
 
-    target_fps = 10.0
-    interval_ms = int(1000 / target_fps)
+    # Hotkey
+    hotkeys = HotkeyManager()
+    hotkeys.register_alt_b(hotkey_id=1, callback=sidebar.toggle)
+
+    # Native event hook
+    filt = NativeEventFilter(hotkeys)
+    app.installNativeEventFilter(filt)
+
+    # Detection setup
+    settings = MatchSettings()
+    templates = load_templates(templates_dir())
 
     tracker = StableTracker(
         iou_threshold=settings.track_iou_threshold,
         ttl_seconds=settings.track_ttl_seconds
     )
 
+    region = None  # full screen
+    target_fps = 10.0
+    interval_ms = int(1000 / target_fps)
 
     def tick():
+        # Read sidebar threshold live
+        settings_threshold = sidebar.threshold_slider.value() / 100.0
+
         bgr = grab_region(region)
         gray = preprocess_frame(bgr)
 
-        raw_strong = match_templates(gray, templates, threshold=settings.threshold)
-        raw_weak   = match_templates(gray, templates, threshold=settings.keep_threshold)
+        # Hysteresis: strong/weak
+        strong_raw = match_templates(gray, templates, threshold=settings_threshold)
+        weak_raw = match_templates(gray, templates, threshold=max(0.60, settings_threshold - 0.12))
 
-        strong = nms(raw_strong, iou_threshold=settings.nms_iou_threshold)
-        weak   = nms(raw_weak,   iou_threshold=settings.nms_iou_threshold)
+        strong = nms(strong_raw, iou_threshold=settings.nms_iou_threshold)
+        weak = nms(weak_raw, iou_threshold=settings.nms_iou_threshold)
 
         tracks = tracker.update(strong_dets=strong, weak_dets=weak)
 
+        if not sidebar.enable_overlay.isChecked():
+            overlay.update_boxes([])
+            return
 
-        # raw = match_templates(gray, templates, threshold=settings.threshold)
-        # filtered = nms(raw, iou_threshold=settings.nms_iou_threshold)
-        # tracks = tracker.update(filtered)
-
-        # Convert matches -> overlay boxes
         boxes = []
         for tr in tracks:
             x, y = tr.x, tr.y
@@ -69,7 +91,10 @@ def main() -> int:
     timer.timeout.connect(tick)
     timer.start(interval_ms)
 
-    return app.exec()
+    try:
+        return app.exec()
+    finally:
+        hotkeys.unregister_all()
 
 
 if __name__ == "__main__":
