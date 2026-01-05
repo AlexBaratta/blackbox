@@ -25,6 +25,8 @@ jobs:
         run: |
           pyinstaller --noconfirm --clean --windowed \
             --name Blackbox \
+            --paths src \
+            --collect-submodules blackbox \
             --add-data "assets:assets" \
             run_blackbox.py
 
