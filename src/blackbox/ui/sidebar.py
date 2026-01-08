@@ -5,7 +5,7 @@ from typing import Dict, List, Set
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QSlider, QCheckBox, QPushButton,
-    QLineEdit, QListWidget, QListWidgetItem
+    QLineEdit, QListWidget, QListWidgetItem, QApplication
 )
 
 from blackbox.catalog import CatalogItem
@@ -24,7 +24,6 @@ class Sidebar(QWidget):
             | Qt.WindowType.WindowStaysOnTopHint
             | Qt.WindowType.Tool
         )
-        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
 
         self.setFixedWidth(360)
         self._reposition_right()
@@ -86,31 +85,70 @@ class Sidebar(QWidget):
 
         self.setStyleSheet("""
             QWidget {
-                background-color: rgba(88, 88, 88, 210);
-                border: 1px solid rgba(255,255,255,60);
+                background-color: rgb(30, 30, 35);
+                border: 1px solid rgb(60, 60, 65);
                 border-radius: 12px;
             }
-            QLabel { color: white; }
+            QLabel { 
+                color: white; 
+                background-color: transparent;
+                border: none;
+            }
             QLineEdit {
                 padding: 8px;
                 border-radius: 10px;
-                background-color: rgba(255,255,255,18);
+                background-color: rgb(45, 45, 50);
                 color: white;
-                border: 1px solid rgba(255,255,255,40);
+                border: 1px solid rgb(70, 70, 75);
             }
             QListWidget {
-                background-color: rgba(255,255,255,10);
+                background-color: rgb(40, 40, 45);
                 color: white;
-                border: 1px solid rgba(255,255,255,30);
+                border: 1px solid rgb(60, 60, 65);
                 border-radius: 10px;
+            }
+            QListWidget::item {
+                padding: 4px;
+            }
+            QListWidget::item:selected {
+                background-color: rgb(60, 60, 70);
+            }
+            QListWidget::item:hover {
+                background-color: rgb(50, 50, 58);
+            }
+            QCheckBox {
+                color: white;
+                background-color: transparent;
+                border: none;
+            }
+            QCheckBox::indicator {
+                width: 18px;
+                height: 18px;
+            }
+            QSlider::groove:horizontal {
+                background: rgb(50, 50, 55);
+                height: 8px;
+                border-radius: 4px;
+            }
+            QSlider::handle:horizontal {
+                background: rgb(100, 180, 100);
+                width: 16px;
+                margin: -4px 0;
+                border-radius: 8px;
             }
             QPushButton {
                 padding: 8px;
                 border-radius: 10px;
-                background-color: rgba(255,255,255,30);
+                background-color: rgb(55, 55, 60);
                 color: white;
+                border: 1px solid rgb(70, 70, 75);
             }
-            QPushButton:hover { background-color: rgba(255,255,255,45); }
+            QPushButton:hover { 
+                background-color: rgb(70, 70, 80); 
+            }
+            QPushButton:pressed { 
+                background-color: rgb(50, 50, 55); 
+            }
         """)
 
         self._populate_list()
