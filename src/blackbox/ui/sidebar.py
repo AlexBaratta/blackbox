@@ -62,16 +62,21 @@ class Sidebar(QWidget):
         layout.addWidget(self.list, stretch=1)
 
         btn_row = QVBoxLayout()
+        btn_row.setSpacing(6)
 
-        # self.btn_select_all = QPushButton("Select all (filtered)")
-        # self.btn_select_all.clicked.connect(self._select_all_filtered)
-        # btn_row.addWidget(self.btn_select_all)
+        self.btn_show_selected = QPushButton("Show selected only")
+        self.btn_show_selected.clicked.connect(self._filter_selected_only)
+        btn_row.addWidget(self.btn_show_selected)
+        
+        self.btn_show_all = QPushButton("Show all items")
+        self.btn_show_all.clicked.connect(self._show_all_items)
+        btn_row.addWidget(self.btn_show_all)
 
-        self.btn_clear = QPushButton("Clear selection")
+        self.btn_clear = QPushButton("Deselect all")
         self.btn_clear.clicked.connect(self._clear_selection)
         btn_row.addWidget(self.btn_clear)
 
-        close_btn = QPushButton("Close (Alt+Hotkey)")
+        close_btn = QPushButton("Close")
         close_btn.clicked.connect(self.hide)
         btn_row.addWidget(close_btn)
 
@@ -165,6 +170,7 @@ class Sidebar(QWidget):
             if not witem.isHidden():
                 witem.setCheckState(Qt.CheckState.Checked)
         self.list.blockSignals(False)
+        self._labels_dirty = True
 
     def _clear_selection(self):
         self.list.blockSignals(True)
@@ -172,6 +178,20 @@ class Sidebar(QWidget):
             self.list.item(i).setCheckState(Qt.CheckState.Unchecked)
         self.list.blockSignals(False)
         self._labels_dirty = True  # Invalidate cache
+
+    def _filter_selected_only(self):
+        """Show only items that are currently selected."""
+        self.search.clear()  # Clear any existing search
+        for i in range(self.list.count()):
+            witem = self.list.item(i)
+            is_checked = witem.checkState() == Qt.CheckState.Checked
+            witem.setHidden(not is_checked)
+    
+    def _show_all_items(self):
+        """Show all items (reset filter)."""
+        self.search.clear()
+        for i in range(self.list.count()):
+            self.list.item(i).setHidden(False)
 
     def _on_item_changed(self, _):
         self._labels_dirty = True  # Invalidate cache when selection changes
