@@ -58,6 +58,7 @@ class Sidebar(QWidget):
         self.list = QListWidget()
         self.list.setAlternatingRowColors(True)
         self.list.itemChanged.connect(self._on_item_changed)
+        self.list.itemClicked.connect(self._on_item_clicked)  # Click anywhere on row to toggle
         layout.addWidget(self.list, stretch=1)
 
         btn_row = QVBoxLayout()
@@ -233,6 +234,13 @@ class Sidebar(QWidget):
 
     def _on_item_changed(self, _):
         self._labels_dirty = True  # Invalidate cache when selection changes
+
+    def _on_item_clicked(self, item: QListWidgetItem):
+        """Toggle checkbox when clicking anywhere on the row."""
+        if item.checkState() == Qt.CheckState.Checked:
+            item.setCheckState(Qt.CheckState.Unchecked)
+        else:
+            item.setCheckState(Qt.CheckState.Checked)
 
     def selected_item_ids(self) -> Set[str]:
         out: Set[str] = set()
