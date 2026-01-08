@@ -28,6 +28,7 @@ jobs:
             --paths src \
             --collect-submodules blackbox \
             --add-data "assets:assets" \
+            --icon "assets/icon.icns" \
             run_blackbox.py
 
       - name: Package .app into a zip (preserve bundle metadata)
