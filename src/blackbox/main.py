@@ -76,20 +76,19 @@ def main() -> int:
         settings_threshold = sidebar.threshold_slider.value() / 100.0
 
         bgr = grab_region(region)
-        gray = preprocess_frame(bgr)
+        frame_data = preprocess_frame(bgr)  # Returns (gray, bgr) tuple
 
         selected_labels = sidebar.selected_template_labels()
 
-        # If nothing selected, match nothing (or choose match all; your call)
         if not selected_labels:
             overlay.update_boxes([])
             return
 
         active_templates = {k: v for k, v in templates.items() if k in selected_labels}
-
-        # Hysteresis: strong/weak
-        strong_raw = match_templates(gray, active_templates, threshold=settings_threshold)
-        weak_raw = match_templates(gray, active_templates, threshold=max(0.60, settings_threshold - 0.12))
+        
+        # Hysteresis: strong/weak - grayscale matching + color verification
+        strong_raw = match_templates(frame_data, active_templates, threshold=settings_threshold)
+        weak_raw = match_templates(frame_data, active_templates, threshold=max(0.55, settings_threshold - 0.15))
 
         strong = nms(strong_raw, iou_threshold=settings.nms_iou_threshold)
         weak = nms(weak_raw, iou_threshold=settings.nms_iou_threshold)

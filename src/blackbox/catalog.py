@@ -120,7 +120,7 @@ def default_catalog() -> Dict[str, CatalogItem]:
         CatalogItem(id="mechanical_components", name="Mechanical Components", template_labels=["mechanical_components"]),
         CatalogItem(id="medium_gun_parts", name="Medium Gun Parts", template_labels=["medium_gun_parts"]),
         CatalogItem(id="metal_brackets", name="Metal Brackets", template_labels=["metal_brackets"]),
-        CatalogItem(id="metal_parts", name="Metal Parts", template_labels=["metal_parts"]),
+        CatalogItem(id="metals_parts", name="Metal Parts", template_labels=["metals_parts"]),
         # CatalogItem(id="microscope", name="Microscope", template_labels=["microscope"]),
         CatalogItem(id="mini_centrifuge", name="Mini Centrifuge", template_labels=["mini_centrifuge"]),
         # CatalogItem(id="mod_components", name="Mod Components", template_labels=["mod_components"]),
