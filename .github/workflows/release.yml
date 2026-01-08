@@ -1,0 +1,117 @@
+name: Build and Release
+
+on:
+  push:
+    branches: [main]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Build
+        run: pyinstaller --noconfirm --clean Blackbox.spec
+
+      - name: Zip artifact
+        run: Compress-Archive -Path "dist\Blackbox\*" -DestinationPath "Blackbox-windows.zip"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Blackbox-windows
+          path: Blackbox-windows.zip
+
+  build-mac:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Create macOS icon from PNG (if icns doesn't exist)
+        run: |
+          if [ -f "assets/icon.icns" ]; then
+            echo "icon.icns already exists"
+          elif [ -f "assets/icon.png" ]; then
+            echo "Generating icon.icns from icon.png"
+            mkdir -p icon.iconset
+            sips -z 16 16     assets/icon.png --out icon.iconset/icon_16x16.png
+            sips -z 32 32     assets/icon.png --out icon.iconset/icon_16x16@2x.png
+            sips -z 32 32     assets/icon.png --out icon.iconset/icon_32x32.png
+            sips -z 64 64     assets/icon.png --out icon.iconset/icon_32x32@2x.png
+            sips -z 128 128   assets/icon.png --out icon.iconset/icon_128x128.png
+            sips -z 256 256   assets/icon.png --out icon.iconset/icon_128x128@2x.png
+            sips -z 256 256   assets/icon.png --out icon.iconset/icon_256x256.png
+            sips -z 512 512   assets/icon.png --out icon.iconset/icon_256x256@2x.png
+            sips -z 512 512   assets/icon.png --out icon.iconset/icon_512x512.png
+            sips -z 1024 1024 assets/icon.png --out icon.iconset/icon_512x512@2x.png
+            iconutil -c icns icon.iconset -o assets/icon.icns
+            rm -rf icon.iconset
+          fi
+
+      - name: Build
+        run: |
+          pyinstaller --noconfirm --clean --windowed \
+            --name Blackbox \
+            --paths src \
+            --collect-submodules blackbox \
+            --add-data "assets:assets" \
+            --icon "assets/icon.icns" \
+            run_blackbox.py
+
+      - name: Package .app into zip
+        run: ditto -c -k --sequesterRsrc --keepParent "dist/Blackbox.app" "Blackbox-mac.zip"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Blackbox-mac
+          path: Blackbox-mac.zip
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [build-windows, build-mac]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            artifacts/Blackbox-windows/Blackbox-windows.zip
+            artifacts/Blackbox-mac/Blackbox-mac.zip
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
