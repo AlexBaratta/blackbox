@@ -16,6 +16,8 @@ class Sidebar(QWidget):
         super().__init__()
         self.catalog = catalog
         self._visible_ids: List[str] = []
+        self._cached_labels: Set[str] = set()  # Cache for selected labels
+        self._labels_dirty: bool = True  # Flag to invalidate cache
 
         self.setWindowFlags(
             Qt.WindowType.FramelessWindowHint
@@ -169,10 +171,10 @@ class Sidebar(QWidget):
         for i in range(self.list.count()):
             self.list.item(i).setCheckState(Qt.CheckState.Unchecked)
         self.list.blockSignals(False)
+        self._labels_dirty = True  # Invalidate cache
 
     def _on_item_changed(self, _):
-        # placeholder: we pull selected items via getter below
-        pass
+        self._labels_dirty = True  # Invalidate cache when selection changes
 
     def selected_item_ids(self) -> Set[str]:
         out: Set[str] = set()
@@ -183,8 +185,15 @@ class Sidebar(QWidget):
         return out
 
     def selected_template_labels(self) -> Set[str]:
-        labels: Set[str] = set()
-        for item_id in self.selected_item_ids():
-            for lab in self.catalog[item_id].template_labels:
-                labels.add(lab.upper())
-        return labels
+        """Return cached selected labels, only recompute when dirty."""
+        if self._labels_dirty:
+            labels: Set[str] = set()
+            for i in range(self.list.count()):
+                witem = self.list.item(i)
+                if witem.checkState() == Qt.CheckState.Checked:
+                    item_id = witem.data(Qt.ItemDataRole.UserRole)
+                    for lab in self.catalog[item_id].template_labels:
+                        labels.add(lab.upper())
+            self._cached_labels = labels
+            self._labels_dirty = False
+        return self._cached_labels
