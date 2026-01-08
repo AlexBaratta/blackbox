@@ -63,7 +63,7 @@ class Sidebar(QWidget):
         self.list = QListWidget()
         self.list.setAlternatingRowColors(True)
         self.list.itemChanged.connect(self._on_item_changed)
-        self.list.itemClicked.connect(self._on_item_clicked)  # Click anywhere on row to toggle
+        self.list.clicked.connect(self._on_list_clicked)  # Click anywhere on row to toggle
         layout.addWidget(self.list, stretch=1)
 
         btn_row = QVBoxLayout()
@@ -278,12 +278,27 @@ class Sidebar(QWidget):
         self._labels_dirty = True  # Invalidate cache when selection changes
         self._save_selection()  # Persist to disk
 
-    def _on_item_clicked(self, item: QListWidgetItem):
-        """Toggle checkbox when clicking anywhere on the row."""
-        if item.checkState() == Qt.CheckState.Checked:
-            item.setCheckState(Qt.CheckState.Unchecked)
-        else:
-            item.setCheckState(Qt.CheckState.Checked)
+    def _on_list_clicked(self, index):
+        """Toggle checkbox when clicking on the text (not checkbox) part of the row."""
+        item = self.list.itemFromIndex(index)
+        if item is None:
+            return
+        
+        # Get the checkbox rect to see if click was on checkbox or text
+        rect = self.list.visualItemRect(item)
+        # Checkbox is typically on the left, about 20-24 pixels wide
+        checkbox_width = 28
+        
+        # Get cursor position relative to the list widget
+        cursor_pos = self.list.mapFromGlobal(self.list.cursor().pos())
+        
+        # If click was on text area (not checkbox), toggle the item
+        # Checkbox clicks are already handled by Qt automatically
+        if cursor_pos.x() > rect.x() + checkbox_width:
+            if item.checkState() == Qt.CheckState.Checked:
+                item.setCheckState(Qt.CheckState.Unchecked)
+            else:
+                item.setCheckState(Qt.CheckState.Checked)
 
     def selected_item_ids(self) -> Set[str]:
         out: Set[str] = set()
