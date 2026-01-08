@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from typing import Dict, List, Set
 
 from PyQt6.QtCore import Qt
@@ -9,6 +10,10 @@ from PyQt6.QtWidgets import (
 )
 
 from blackbox.catalog import CatalogItem
+from blackbox.utils.paths import ensure_data_dir
+
+
+SELECTION_FILE = "selected_items.json"
 
 
 class Sidebar(QWidget):
@@ -171,11 +176,41 @@ class Sidebar(QWidget):
             self.activateWindow()
             self.search.setFocus()
 
+    # -------- Persistence --------
+    
+    def _get_selection_path(self):
+        return ensure_data_dir() / SELECTION_FILE
+    
+    def _load_selection(self) -> Set[str]:
+        """Load saved selection from disk."""
+        path = self._get_selection_path()
+        if path.exists():
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    return set(data.get("selected_ids", []))
+            except (json.JSONDecodeError, IOError):
+                pass
+        return set()
+    
+    def _save_selection(self):
+        """Save current selection to disk."""
+        path = self._get_selection_path()
+        selected = list(self.selected_item_ids())
+        try:
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump({"selected_ids": selected}, f, indent=2)
+        except IOError as e:
+            print(f"Failed to save selection: {e}")
+
     # -------- list/search logic --------
 
     def _populate_list(self):
         self.list.blockSignals(True)
         self.list.clear()
+
+        # Load previously saved selection
+        saved_selection = self._load_selection()
 
         # default visible: all
         self._visible_ids = list(self.catalog.keys())
@@ -183,11 +218,16 @@ class Sidebar(QWidget):
         for item_id, item in self.catalog.items():
             witem = QListWidgetItem(item.name)
             witem.setFlags(witem.flags() | Qt.ItemFlag.ItemIsUserCheckable)
-            witem.setCheckState(Qt.CheckState.Unchecked)
+            # Restore saved selection state
+            if item_id in saved_selection:
+                witem.setCheckState(Qt.CheckState.Checked)
+            else:
+                witem.setCheckState(Qt.CheckState.Unchecked)
             witem.setData(Qt.ItemDataRole.UserRole, item_id)
             self.list.addItem(witem)
 
         self.list.blockSignals(False)
+        self._labels_dirty = True  # Recalculate labels after loading
 
     def _apply_filter(self, text: str):
         q = text.strip().lower()
@@ -210,6 +250,7 @@ class Sidebar(QWidget):
                 witem.setCheckState(Qt.CheckState.Checked)
         self.list.blockSignals(False)
         self._labels_dirty = True
+        self._save_selection()  # Persist to disk
 
     def _clear_selection(self):
         self.list.blockSignals(True)
@@ -217,6 +258,7 @@ class Sidebar(QWidget):
             self.list.item(i).setCheckState(Qt.CheckState.Unchecked)
         self.list.blockSignals(False)
         self._labels_dirty = True  # Invalidate cache
+        self._save_selection()  # Persist to disk
 
     def _filter_selected_only(self):
         """Show only items that are currently selected."""
@@ -234,6 +276,7 @@ class Sidebar(QWidget):
 
     def _on_item_changed(self, _):
         self._labels_dirty = True  # Invalidate cache when selection changes
+        self._save_selection()  # Persist to disk
 
     def _on_item_clicked(self, item: QListWidgetItem):
         """Toggle checkbox when clicking anywhere on the row."""
