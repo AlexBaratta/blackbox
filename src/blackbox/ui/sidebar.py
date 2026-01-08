@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from typing import Dict, List, Set
 
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QSlider, QCheckBox, QPushButton,
     QLineEdit, QListWidget, QListWidgetItem, QApplication
@@ -23,6 +23,12 @@ class Sidebar(QWidget):
         self._visible_ids: List[str] = []
         self._cached_labels: Set[str] = set()  # Cache for selected labels
         self._labels_dirty: bool = True  # Flag to invalidate cache
+        
+        # Debounce timer for saving selection
+        self._save_timer = QTimer()
+        self._save_timer.setSingleShot(True)
+        self._save_timer.setInterval(500)  # Save 500ms after last change
+        self._save_timer.timeout.connect(self._do_save_selection)
 
         self.setWindowFlags(
             Qt.WindowType.FramelessWindowHint
@@ -194,7 +200,11 @@ class Sidebar(QWidget):
         return set()
     
     def _save_selection(self):
-        """Save current selection to disk."""
+        """Schedule a debounced save (waits for rapid clicks to settle)."""
+        self._save_timer.start()  # Restarts timer if already running
+    
+    def _do_save_selection(self):
+        """Actually save current selection to disk."""
         path = self._get_selection_path()
         selected = list(self.selected_item_ids())
         try:
