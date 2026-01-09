@@ -7,10 +7,10 @@ icon_file = icon_path if os.path.exists(icon_path) else None
 
 a = Analysis(
     ['run_blackbox.py'],
-    pathex=[],
+    pathex=['src'],
     binaries=[],
     datas=[('assets', 'assets')],
-    hiddenimports=[],
+    hiddenimports=['blackbox', 'blackbox.main', 'blackbox.catalog', 'blackbox.settings'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
