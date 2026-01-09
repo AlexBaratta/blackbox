@@ -77,12 +77,16 @@ jobs:
 
       - name: Build
         run: |
+          ICON_FLAG=""
+          if [ -f "assets/icon.icns" ]; then
+            ICON_FLAG="--icon assets/icon.icns"
+          fi
           pyinstaller --noconfirm --clean --windowed \
             --name Blackbox \
             --paths src \
             --collect-submodules blackbox \
             --add-data "assets:assets" \
-            --icon "assets/icon.icns" \
+            $ICON_FLAG \
             run_blackbox.py
 
       - name: Package .app into zip
