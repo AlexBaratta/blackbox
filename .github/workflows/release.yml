@@ -29,14 +29,11 @@ jobs:
       - name: Build
         run: pyinstaller --noconfirm --clean Blackbox.spec
 
-      - name: Zip artifact
-        run: Compress-Archive -Path "dist\Blackbox\*" -DestinationPath "Blackbox-windows.zip"
-
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: Blackbox-windows
-          path: Blackbox-windows.zip
+          path: dist/Blackbox.exe
 
   build-mac:
     runs-on: macos-latest
@@ -81,7 +78,7 @@ jobs:
           if [ -f "assets/icon.icns" ]; then
             ICON_FLAG="--icon assets/icon.icns"
           fi
-          pyinstaller --noconfirm --clean --windowed \
+          pyinstaller --noconfirm --clean --onefile --windowed \
             --name Blackbox \
             --paths src \
             --collect-submodules blackbox \
@@ -89,14 +86,11 @@ jobs:
             $ICON_FLAG \
             run_blackbox.py
 
-      - name: Package .app into zip
-        run: ditto -c -k --sequesterRsrc --keepParent "dist/Blackbox.app" "Blackbox-mac.zip"
-
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: Blackbox-mac
-          path: Blackbox-mac.zip
+          path: dist/Blackbox
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')
@@ -114,8 +108,8 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            artifacts/Blackbox-windows/Blackbox-windows.zip
-            artifacts/Blackbox-mac/Blackbox-mac.zip
+            artifacts/Blackbox-windows/Blackbox.exe
+            artifacts/Blackbox-mac/Blackbox
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
