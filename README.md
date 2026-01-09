@@ -67,7 +67,7 @@ Download the latest release from the [Releases](https://github.com/yourusername/
 
 | Hotkey | Action |
 |--------|--------|
-| `Ctrl+Shift+H` | Toggle overlay visibility |
+| `Alt/Cmd + D` | Toggle overlay visibility |
 
 ### Sidebar Controls
 
