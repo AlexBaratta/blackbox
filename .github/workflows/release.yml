@@ -53,30 +53,30 @@ jobs:
 
       - name: Create macOS icon from PNG (if icns doesn't exist)
         run: |
-          if [ -f "assets/icon.icns" ]; then
+          if [ -f "assets/blackbox_logo.icns" ]; then
             echo "icon.icns already exists"
-          elif [ -f "assets/icon.png" ]; then
+          elif [ -f "assets/blackbox_logo.png" ]; then
             echo "Generating icon.icns from icon.png"
             mkdir -p icon.iconset
-            sips -z 16 16     assets/icon.png --out icon.iconset/icon_16x16.png
-            sips -z 32 32     assets/icon.png --out icon.iconset/icon_16x16@2x.png
-            sips -z 32 32     assets/icon.png --out icon.iconset/icon_32x32.png
-            sips -z 64 64     assets/icon.png --out icon.iconset/icon_32x32@2x.png
-            sips -z 128 128   assets/icon.png --out icon.iconset/icon_128x128.png
-            sips -z 256 256   assets/icon.png --out icon.iconset/icon_128x128@2x.png
-            sips -z 256 256   assets/icon.png --out icon.iconset/icon_256x256.png
-            sips -z 512 512   assets/icon.png --out icon.iconset/icon_256x256@2x.png
-            sips -z 512 512   assets/icon.png --out icon.iconset/icon_512x512.png
-            sips -z 1024 1024 assets/icon.png --out icon.iconset/icon_512x512@2x.png
-            iconutil -c icns icon.iconset -o assets/icon.icns
+            sips -z 16 16     assets/blackbox_logo.png --out icon.iconset/icon_16x16.png
+            sips -z 32 32     assets/blackbox_logo.png --out icon.iconset/icon_16x16@2x.png
+            sips -z 32 32     assets/blackbox_logo.png --out icon.iconset/icon_32x32.png
+            sips -z 64 64     assets/blackbox_logo.png --out icon.iconset/icon_32x32@2x.png
+            sips -z 128 128   assets/blackbox_logo.png --out icon.iconset/icon_128x128.png
+            sips -z 256 256   assets/blackbox_logo.png --out icon.iconset/icon_128x128@2x.png
+            sips -z 256 256   assets/blackbox_logo.png --out icon.iconset/icon_256x256.png
+            sips -z 512 512   assets/blackbox_logo.png --out icon.iconset/icon_256x256@2x.png
+            sips -z 512 512   assets/blackbox_logo.png --out icon.iconset/icon_512x512.png
+            sips -z 1024 1024 assets/blackbox_logo.png --out icon.iconset/icon_512x512@2x.png
+            iconutil -c icns icon.iconset -o assets/blackbox_logo.icns
             rm -rf icon.iconset
           fi
 
       - name: Build
         run: |
           ICON_FLAG=""
-          if [ -f "assets/icon.icns" ]; then
-            ICON_FLAG="--icon assets/icon.icns"
+          if [ -f "assets/blackbox_logo.icns" ]; then
+            ICON_FLAG="--icon assets/blackbox_logo.icns"
           fi
           pyinstaller --noconfirm --clean --onefile --windowed \
             --name Blackbox \
