@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import time
 import threading
+import os
+import sys
 from typing import List, Optional, Dict, Set
 
 from PyQt6.QtCore import QTimer, QObject, pyqtSignal
@@ -92,6 +94,52 @@ class UiBridge(QObject):
 
 def main() -> int:
     app = QApplication([])
+    
+    # Set app properties for proper taskbar behavior
+    app.setApplicationName("Blackbox")
+    app.setApplicationDisplayName("Blackbox")
+    app.setApplicationVersion("1.0")
+    app.setOrganizationName("Blackbox")
+    
+    # For Windows - ensure proper taskbar icon/grouping
+    import platform
+    if platform.system() == "Windows":
+        try:
+            import ctypes
+            # Set the app user model ID to group properly in taskbar
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID("Blackbox.App")
+        except:
+            pass  # Fallback if ctypes not available
+
+    # Create a hidden main window for taskbar presence
+    from PyQt6.QtWidgets import QMainWindow
+    from PyQt6.QtGui import QIcon
+    main_window = QMainWindow()
+    main_window.setWindowTitle("Blackbox")
+    main_window.setMinimumSize(300, 200)
+    
+    # Set the window icon for taskbar
+    try:
+        # Handle both development and bundled executable paths
+        import sys
+        if getattr(sys, 'frozen', False):
+            # Running as bundled executable
+            base_path = sys._MEIPASS
+            icon_path = os.path.join(base_path, "assets", "blackbox_logo.ico")
+        else:
+            # Running as script
+            icon_path = "assets/blackbox_logo.ico"
+            
+        if os.path.exists(icon_path):
+            icon = QIcon(icon_path)
+            main_window.setWindowIcon(icon)
+            # Also set the application icon globally
+            app.setWindowIcon(icon)
+    except Exception as e:
+        print(f"Failed to load icon: {e}")  # Debug info
+        
+    # Start minimized to system tray area but still show in taskbar
+    main_window.showMinimized()
 
     # UI
     overlay = BoxesOverlay()

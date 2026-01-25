@@ -34,6 +34,7 @@ exe = EXE(
     upx=True,
     upx_exclude=[],
     console=False,
+    windowed=True,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
