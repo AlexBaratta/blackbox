@@ -2,7 +2,7 @@
 import os
 
 # Use icon if it exists, otherwise None
-icon_path = 'assets/icon.ico'
+icon_path = 'assets/blackbox_logo.ico'
 icon_file = icon_path if os.path.exists(icon_path) else None
 
 a = Analysis(
